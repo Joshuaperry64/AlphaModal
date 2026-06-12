@@ -25,7 +25,7 @@ MODEL_REVISION = "afda370583db9c5359511ed5d989400a6199dfe1"
 
 # ## Define a container image
 
-# We’ll start with Modal's baseline `debian_slim` image and install the relevant libraries.
+# Weâ€™ll start with Modal's baseline `debian_slim` image and install the relevant libraries.
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
@@ -151,11 +151,11 @@ class Model:
 async def transcribe_hf_dataset(dataset_name):
     from datasets import load_dataset
 
-    print("📂 Loading dataset", dataset_name)
+    print("ðŸ“‚ Loading dataset", dataset_name)
     ds = load_dataset(dataset_name, "clean", split="validation")
-    print("📂 Dataset loaded")
+    print("ðŸ“‚ Dataset loaded")
     batched_whisper = Model()
-    print("📣 Sending data for transcription")
+    print("ðŸ“£ Sending data for transcription")
     async for transcription in batched_whisper.transcribe.map.aio(ds["audio"]):
         yield transcription
 
@@ -172,3 +172,15 @@ async def main(dataset_name: Optional[str] = None):
         dataset_name = "hf-internal-testing/librispeech_asr_dummy"
     async for result in transcribe_hf_dataset.remote_gen.aio(dataset_name):
         print(result["text"])
+
+
+# Auto-generated local_entrypoint wrappers
+
+
+@app.local_entrypoint()
+
+def entrypoint_download_model():
+    try:
+        return download_model.local()
+    except Exception:
+        return download_model()

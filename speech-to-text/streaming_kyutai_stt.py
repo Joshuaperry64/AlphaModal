@@ -187,7 +187,7 @@ class STT:
                     text_token = text_tokens[0, 0, 0].item()
                     if text_token not in (0, 3):
                         text = self.text_tokenizer.id_to_piece(text_token)
-                        text = text.replace("▁", " ")
+                        text = text.replace("â–", " ")
                         yield text
 
         yield all_pcm_data
@@ -516,3 +516,15 @@ def ui():
         )
 
     return fast_app
+
+
+# Auto-generated local_entrypoint wrappers
+
+
+@app.local_entrypoint()
+
+def entrypoint_ui():
+    try:
+        return ui.local()
+    except Exception:
+        return ui()

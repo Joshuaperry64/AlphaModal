@@ -300,3 +300,35 @@ def serve():
 # ```
 
 # or in the [following ways](https://modal.com/docs/examples/vllm_inference#interact-with-the-server).
+
+
+# Auto-generated local_entrypoint wrappers
+
+
+@app.local_entrypoint()
+
+def entrypoint_prep_dataset():
+    try:
+        return prep_dataset.local()
+    except Exception:
+        return prep_dataset()
+
+
+
+@app.local_entrypoint()
+
+def entrypoint_train(*arglist):
+    try:
+        return train.local(*arglist)
+    except Exception:
+        return train(*arglist)
+
+
+
+@app.local_entrypoint()
+
+def entrypoint_serve():
+    try:
+        return serve.local()
+    except Exception:
+        return serve()

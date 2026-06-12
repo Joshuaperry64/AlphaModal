@@ -59,6 +59,19 @@ class SnapshotEmbedder:
         return embeddings.tolist()
 
 
+@app.local_entrypoint()
+def entrypoint(sentences: list[str] | None = None):
+    """Local entrypoint wrapper for SnapshotEmbedder.run.
+
+    If no sentences are provided, a default example is used.
+    """
+    if sentences is None:
+        sentences = ["what is the meaning of life?"]
+    SnapshotEmbedder = modal.Cls.from_name(app_name, "SnapshotEmbedder")
+    embedder = SnapshotEmbedder()
+    return embedder.run.remote(sentences=sentences)
+
+
 if __name__ == "__main__":
     # after deployment, we can use the class from anywhere
     SnapshotEmbedder = modal.Cls.from_name(app_name, "SnapshotEmbedder")

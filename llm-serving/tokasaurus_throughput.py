@@ -352,3 +352,35 @@ async def _send_request(session: aiohttp.ClientSession, prompt: str):
             "prompt": prompt,
             "completions": [choice["text"] for choice in resp_json["choices"]],
         }
+
+
+# Auto-generated local_entrypoint wrappers
+
+
+@app.local_entrypoint()
+
+def entrypoint_serve():
+    try:
+        return serve.local()
+    except Exception:
+        return serve()
+
+
+
+@app.local_entrypoint()
+
+def entrypoint_count_tokens(texts):
+    try:
+        return count_tokens.local(texts)
+    except Exception:
+        return count_tokens(texts)
+
+
+
+@app.local_entrypoint()
+
+def entrypoint_load_dataset(seed, num_few_shot, limit=None):
+    try:
+        return load_dataset.local(seed, num_few_shot, limit)
+    except Exception:
+        return load_dataset(seed, num_few_shot, limit)

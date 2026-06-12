@@ -192,7 +192,7 @@ def download_demo_files() -> None:
         filepath = pathlib.Path(url).name
         download_file(url=url, output_path=detectors_dir / filepath)
         print(f"download complete for {filepath}")
-    print("🎉 finished baking demo file(s) into image.")
+    print("ðŸŽ‰ finished baking demo file(s) into image.")
 
 
 image = (
@@ -292,6 +292,7 @@ def import_gradio_app_blocks(demo: DemoApp):
     max_containers=1,
     scaledown_window=600,
 )
+@app.local_entrypoint()
 @modal.asgi_app()
 def run():
     from gradio.routes import mount_gradio_app

@@ -20,7 +20,7 @@
 # You should see output like the following:
 
 # ```bash
-# 🎤 Starting Transcription
+# ðŸŽ¤ Starting Transcription
 # A Dream Within A Dream Edgar Allan Poe
 # take this kiss upon the brow, And in parting from you now, Thus much let me avow You are not wrong who deem That my days have been a dream.
 # ...
@@ -195,7 +195,7 @@ class ParakeetModel:
             text = self.transcribe(segment_to_transcribe.raw_data)
             return audio_segment, text
         except Exception as e:
-            print("❌ Transcription error:", e)
+            print("âŒ Transcription error:", e)
             raise e
 
     @modal.method()
@@ -300,19 +300,19 @@ CHUNK_SIZE = 16_000  # send one second of audio at a time
 async def main(audio_url: str = AUDIO_URL):
     from urllib.request import urlopen
 
-    print(f"🌐 Downloading audio file from {audio_url}")
+    print(f"ðŸŒ Downloading audio file from {audio_url}")
     audio_bytes = urlopen(audio_url).read()
-    print(f"🎧 Downloaded {len(audio_bytes)} bytes")
+    print(f"ðŸŽ§ Downloaded {len(audio_bytes)} bytes")
 
     audio_data = preprocess_audio(audio_bytes)
 
-    print("🎤 Starting Transcription")
+    print("ðŸŽ¤ Starting Transcription")
     async with modal.Queue.ephemeral() as q:
         await ParakeetModel().run_with_queue.spawn.aio(q)
         send = asyncio.create_task(send_audio(q, audio_data))
         recv = asyncio.create_task(receive_text(q))
         await asyncio.gather(send, recv)
-    print("✅ Transcription complete!")
+    print("âœ… Transcription complete!")
 
 
 # Below are the two functions that coordinate streaming audio and receiving transcriptions.
@@ -417,3 +417,32 @@ class NoStdStreams(object):
     def __exit__(self, exc_type, exc_value, traceback):
         sys.stdout, sys.stderr = self._stdout, self._stderr
         self.devnull.close()
+
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_ParakeetModel():
+    """Auto-generated wrapper to instantiate ParakeetModel"""
+    try:
+        Cls = modal.Cls.from_name('example-streaming-parakeet', 'ParakeetModel')
+    except Exception:
+        try:
+            Cls = modal.Cls.from_name(app.name, 'ParakeetModel')
+        except Exception as e:
+            raise RuntimeError('Could not resolve class ParakeetModel for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated ParakeetModel'
+
+
+@app.local_entrypoint()
+def entrypoint_WebServer():
+    """Auto-generated wrapper to instantiate WebServer"""
+    try:
+        Cls = modal.Cls.from_name('example-streaming-parakeet', 'WebServer')
+    except Exception:
+        try:
+            Cls = modal.Cls.from_name(app.name, 'WebServer')
+        except Exception as e:
+            raise RuntimeError('Could not resolve class WebServer for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated WebServer'

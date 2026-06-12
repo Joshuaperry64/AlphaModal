@@ -167,3 +167,15 @@ def embed_dataset():
     for output_batch in model.embed.map(generate_batches(), order_outputs=False):
         # Do something with the outputs.
         pass
+
+
+# Auto-generated local_entrypoint wrappers
+
+
+@app.local_entrypoint()
+
+def entrypoint_embed_dataset():
+    try:
+        return embed_dataset.local()
+    except Exception:
+        return embed_dataset()

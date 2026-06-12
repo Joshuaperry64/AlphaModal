@@ -534,3 +534,18 @@ if __name__ == "__main__":
         raise Exception(
             f"To take advantage of GPU snapshots, deploy first with modal deploy {__file__}"
         ) from e
+
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_LfmVllmInference():
+    """Auto-generated wrapper to instantiate LfmVllmInference"""
+    try:
+        Cls = modal.Cls.from_name('example-lfm-snapshot', 'LfmVllmInference')
+    except Exception:
+        try:
+            Cls = modal.Cls.from_name(app.name, 'LfmVllmInference')
+        except Exception as e:
+            raise RuntimeError('Could not resolve class LfmVllmInference for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated LfmVllmInference'

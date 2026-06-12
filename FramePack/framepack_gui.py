@@ -127,7 +127,7 @@ class FramePackContainer:
     @modal.enter()
     def build_and_warmup_application(self):
         """Runs EXACTLY ONCE per container boot up."""
-        print("🚀 [Cold Start] Initializing container runtime environment...")
+        print("ðŸš€ [Cold Start] Initializing container runtime environment...")
         
         REPO_ROOT = "/root/framepack-studio"
         if REPO_ROOT not in sys.path:
@@ -143,9 +143,9 @@ class FramePackContainer:
         import gradio as gr
 
         # Block their blocking local .launch() chain execution thread
-        gr.Blocks.launch = lambda *args, **kwargs: print("⚡ Blocked native local server launch loop.")
+        gr.Blocks.launch = lambda *args, **kwargs: print("âš¡ Blocked native local server launch loop.")
 
-        print("📦 [Cold Start] Importing studio codebase and parsing weights into GPU layer...")
+        print("ðŸ“¦ [Cold Start] Importing studio codebase and parsing weights into GPU layer...")
         import studio as gradio_module
         
         if hasattr(gradio_module, "demo"):
@@ -160,7 +160,7 @@ class FramePackContainer:
         
         # Commit volume configurations safely
         model_volume.commit()
-        print("✅ [Cold Start] Container environment fully warmed up. Models loaded.")
+        print("âœ… [Cold Start] Container environment fully warmed up. Models loaded.")
 
     @modal.asgi_app()
     def ui(self):
@@ -178,3 +178,17 @@ class FramePackContainer:
         
         # 3. Inject our routing/root-path sanitizer layer to protect against proxy quirks
         return CleanGradioPathMiddleware(web_app)
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_FramePackContainer():
+    """Auto-generated wrapper to instantiate FramePackContainer"""
+    try:
+        Cls = modal.Cls.from_name('framepack-studio-wsl-lifecycle', 'FramePackContainer')
+    except Exception:
+        try:
+            Cls = modal.Cls.from_name(app.name, 'FramePackContainer')
+        except Exception as e:
+            raise RuntimeError('Could not resolve class FramePackContainer for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated FramePackContainer'

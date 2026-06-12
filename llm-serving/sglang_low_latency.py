@@ -557,3 +557,15 @@ async def _send_request_streaming(
                 print(chunk, end="", flush="\n" in chunk or "." in chunk)
                 full_text += chunk
         print()  # newline after stream completes
+
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_SGLang():
+    """Auto-generated wrapper to instantiate SGLang (app name not literal in file)."""
+    try:
+        Cls = modal.Cls.from_name(app.name, 'SGLang')
+    except Exception as e:
+        raise RuntimeError('Could not resolve class SGLang for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated SGLang'

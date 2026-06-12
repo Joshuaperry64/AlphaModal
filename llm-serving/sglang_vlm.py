@@ -370,3 +370,15 @@ async def _send_request_streaming(
 # ```bash
 # modal deploy sglang_vlm.py
 # ```
+
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_VlmServer():
+    """Auto-generated wrapper to instantiate VlmServer (app name not literal in file)."""
+    try:
+        Cls = modal.Cls.from_name(app.name, 'VlmServer')
+    except Exception as e:
+        raise RuntimeError('Could not resolve class VlmServer for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated VlmServer'

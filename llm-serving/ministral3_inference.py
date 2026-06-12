@@ -458,3 +458,18 @@ if __name__ == "__main__":
         raise Exception(
             f"To take advantage of GPU snapshots, deploy first with modal deploy {__file__}"
         ) from e
+
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_VllmServer():
+    """Auto-generated wrapper to instantiate VllmServer"""
+    try:
+        Cls = modal.Cls.from_name('example-ministral3-inference', 'VllmServer')
+    except Exception:
+        try:
+            Cls = modal.Cls.from_name(app.name, 'VllmServer')
+        except Exception as e:
+            raise RuntimeError('Could not resolve class VllmServer for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated VllmServer'

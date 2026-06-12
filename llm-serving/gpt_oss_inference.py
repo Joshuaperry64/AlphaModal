@@ -317,3 +317,15 @@ async def _send_request(
                 raise ValueError(f"Unsupported response delta: {delta}")
     print("")
     print(f"Time to Last Token: {time.perf_counter() - t:.2f} seconds")
+
+
+# Auto-generated local_entrypoint wrappers
+
+
+@app.local_entrypoint()
+
+def entrypoint_serve():
+    try:
+        return serve.local()
+    except Exception:
+        return serve()

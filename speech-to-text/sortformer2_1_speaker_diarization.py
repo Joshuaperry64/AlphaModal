@@ -248,3 +248,32 @@ class WebServer:
             return HTMLResponse(content=html_content)
 
         return web_app
+
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_Sortformer2_1_Speaker_Diarization():
+    """Auto-generated wrapper to instantiate Sortformer2_1_Speaker_Diarization"""
+    try:
+        Cls = modal.Cls.from_name('sortformer2-1-speaker-diarization', 'Sortformer2_1_Speaker_Diarization')
+    except Exception:
+        try:
+            Cls = modal.Cls.from_name(app.name, 'Sortformer2_1_Speaker_Diarization')
+        except Exception as e:
+            raise RuntimeError('Could not resolve class Sortformer2_1_Speaker_Diarization for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated Sortformer2_1_Speaker_Diarization'
+
+
+@app.local_entrypoint()
+def entrypoint_WebServer():
+    """Auto-generated wrapper to instantiate WebServer"""
+    try:
+        Cls = modal.Cls.from_name('sortformer2-1-speaker-diarization', 'WebServer')
+    except Exception:
+        try:
+            Cls = modal.Cls.from_name(app.name, 'WebServer')
+        except Exception as e:
+            raise RuntimeError('Could not resolve class WebServer for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated WebServer'

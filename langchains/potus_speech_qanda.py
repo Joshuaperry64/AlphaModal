@@ -196,6 +196,7 @@ def web(query: str, show_sources: bool = False):
         }
 
 
+@app.local_entrypoint()
 @app.function()
 def cli(query: str, show_sources: bool = False):
     answer, sources = qanda_langchain(query)
@@ -203,9 +204,9 @@ def cli(query: str, show_sources: bool = False):
     bold, end = "\033[1m", "\033[0m"
 
     if show_sources:
-        print(f"🔗 {bold}SOURCES:{end}")
+        print(f"ðŸ”— {bold}SOURCES:{end}")
         print(*reversed(sources), sep="\n----\n")
-    print(f"🦜 {bold}ANSWER:{end}")
+    print(f"ðŸ¦œ {bold}ANSWER:{end}")
     print(answer)
 
 
@@ -213,7 +214,7 @@ def cli(query: str, show_sources: bool = False):
 
 # ```bash
 # modal run potus_speech_qanda.py::cli --query "What did the president say about Justice Breyer"
-# 🦜 ANSWER:
+# ðŸ¦œ ANSWER:
 # The president thanked Justice Breyer for his service and mentioned his legacy of excellence. He also nominated Ketanji Brown Jackson to continue in Justice Breyer's legacy.
 # ```
 

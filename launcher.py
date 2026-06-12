@@ -49,6 +49,11 @@ def get_description(path: pathlib.Path) -> str:
         break
     if lines:
         return " ".join([line for line in lines if line])
+    # if no top comment, try to find inline usage hints like '# args:' or '# cmd:' in the first 80 lines
+    for line in text.splitlines()[:80]:
+        s = line.strip()
+        if s.lower().startswith('# args:') or s.lower().startswith('# cmd:'):
+            return s.lstrip('# ').strip()
     return "No description available. Add a top comment with a short summary."
 
 
@@ -83,7 +88,8 @@ def get_scripts() -> list[dict]:
                         entrypoints.append(m.group(1))
                         break
 
-        uses_modal = "import modal" in txt or "modal.App(" in txt
+        # Treat a file as a Modal app if it defines an App or uses @app/@modal decorators
+        uses_modal = ("modal.App(" in txt) or ("@app." in txt) or ("@modal." in txt)
 
         scripts.append({
             "path": path,
@@ -350,19 +356,64 @@ class LauncherApp(tk.Tk):
         self.detail_text.delete("1.0", "end")
         self.detail_text.insert("1.0", selected["description"])
         self.detail_text.config(state="disabled")
+        # populate entrypoint selector if available
+        eps = selected.get("entrypoints", []) if selected else []
+        if eps:
+            self.entrypoint_combo.config(state="readonly")
+            self.entrypoint_combo["values"] = eps
+            try:
+                self.entrypoint_combo.set(eps[0])
+            except Exception:
+                pass
+        else:
+            self.entrypoint_combo.set("")
+            self.entrypoint_combo["values"] = []
+            self.entrypoint_combo.config(state="disabled")
+        # update entrypoint availability based on launch mode
+        self.on_launch_mode_change()
 
     def on_launch(self):
         if not self.selected_script:
             messagebox.showwarning("No script selected", "Please select a script from the list before launching.")
             return
-        command = create_command(self.selected_script["path"], self.args_entry.get())
+        # map combobox label to internal mode
+        mode_label = self.launch_mode_var.get() if hasattr(self, 'launch_mode_var') else 'python3 (WSL)'
+        mode_map = {
+            'python3 (WSL)': 'python3',
+            'modal run': 'modal_run',
+            'modal serve': 'modal_serve',
+            'modal deploy': 'modal_deploy',
+        }
+        selected_mode = mode_map.get(mode_label, 'python3')
+        entrypoint = None
+        if selected_mode == 'modal_run' and self.entrypoint_combo and self.entrypoint_combo.get():
+            entrypoint = self.entrypoint_combo.get()
+
+        command = create_command(self.selected_script["path"], self.args_entry.get(), launch_mode=selected_mode, entrypoint=entrypoint)
         try:
             subprocess.Popen(["wsl.exe", "bash", "-lc", command])
-            messagebox.showinfo("Launched", f"Script launched in WSL:\n{self.selected_script['rel']}")
+            messagebox.showinfo("Launched", f"Script launched ({mode_label}):\n{self.selected_script['rel']}")
         except FileNotFoundError:
             messagebox.showerror("WSL not found", "Could not find wsl.exe. Make sure WSL is installed and available in PATH.")
         except Exception as exc:
             messagebox.showerror("Launch error", f"Unable to launch script:\n{exc}")
+
+    def on_launch_mode_change(self):
+        # Enable entrypoint selection only for modal_run where entrypoints exist
+        mode_label = self.launch_mode_var.get() if hasattr(self, 'launch_mode_var') else 'python3 (WSL)'
+        if mode_label == 'modal run' and self.selected_script and self.selected_script.get('entrypoints'):
+            self.entrypoint_combo.config(state='readonly')
+            if not self.entrypoint_combo.get() and self.selected_script.get('entrypoints'):
+                try:
+                    self.entrypoint_combo.set(self.selected_script.get('entrypoints')[0])
+                except Exception:
+                    pass
+        else:
+            # disable
+            try:
+                self.entrypoint_combo.config(state='disabled')
+            except Exception:
+                pass
 
     def on_tree_motion(self, event):
         item_id = self.tree.identify_row(event.y)
@@ -377,7 +428,13 @@ class LauncherApp(tk.Tk):
             self.tree_tooltip.hide()
             self.tree_tooltip_item = None
             return
-        tooltip_text = f"{script['title']}\n\n{script['description']}\n\nPath: {script['rel']}"
+        extra = []
+        if script.get('uses_modal'):
+            extra.append('Uses Modal: yes')
+        if script.get('entrypoints'):
+            extra.append('Entrypoints: ' + ', '.join(script.get('entrypoints')))
+        extra_txt = ('\n\n' + '\n'.join(extra)) if extra else ''
+        tooltip_text = f"{script['title']}\n\n{script['description']}\n\nPath: {script['rel']}{extra_txt}"
         self.tree_tooltip.set_text(tooltip_text)
         self.tree_tooltip.hide()
         self.tree_tooltip.show(event)

@@ -289,3 +289,55 @@ def serve():
 # ```
 
 # or in the [following ways](https://modal.com/docs/examples/vllm_inference#interact-with-the-server).
+
+
+# Auto-generated local_entrypoint wrappers
+
+
+@app.local_entrypoint()
+
+def entrypoint_compute_reward(completion, testcase):
+    try:
+        return compute_reward.local(completion, testcase)
+    except Exception:
+        return compute_reward(completion, testcase)
+
+
+
+@app.local_entrypoint()
+
+def entrypoint_train():
+    try:
+        return train.local()
+    except Exception:
+        return train()
+
+
+
+@app.local_entrypoint()
+
+def entrypoint_train_vllm_server_mode():
+    try:
+        return train_vllm_server_mode.local()
+    except Exception:
+        return train_vllm_server_mode()
+
+
+
+@app.local_entrypoint()
+
+def entrypoint_train_vllm_colocate_mode():
+    try:
+        return train_vllm_colocate_mode.local()
+    except Exception:
+        return train_vllm_colocate_mode()
+
+
+
+@app.local_entrypoint()
+
+def entrypoint_serve():
+    try:
+        return serve.local()
+    except Exception:
+        return serve()

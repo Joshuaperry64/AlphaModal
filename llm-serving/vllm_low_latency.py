@@ -466,3 +466,15 @@ if __name__ == "__main__":
 
     print("calling inference server")
     asyncio.run(main(vllm_server._experimental_get_flash_urls()[0]))
+
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_VLLM():
+    """Auto-generated wrapper to instantiate VLLM (app name not literal in file)."""
+    try:
+        Cls = modal.Cls.from_name(app.name, 'VLLM')
+    except Exception as e:
+        raise RuntimeError('Could not resolve class VLLM for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated VLLM'

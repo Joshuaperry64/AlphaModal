@@ -511,3 +511,15 @@ def train(
 
     logger.info("Training run complete!")
     return results
+
+
+# Auto-generated local_entrypoint wrappers
+
+
+@app.local_entrypoint()
+
+def entrypoint_train(num_train_epochs=5, warmup_steps=400, max_steps=-1, overwrite_output_dir=False):
+    try:
+        return train.local(num_train_epochs, warmup_steps, max_steps, overwrite_output_dir)
+    except Exception:
+        return train(num_train_epochs, warmup_steps, max_steps, overwrite_output_dir)

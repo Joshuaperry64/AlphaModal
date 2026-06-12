@@ -328,3 +328,15 @@ async def _send_request(
 # ```bash
 # modal run openai_compatible/load_test.py
 # ```
+
+
+# Auto-generated local_entrypoint wrappers
+
+
+@app.local_entrypoint()
+
+def entrypoint_serve():
+    try:
+        return serve.local()
+    except Exception:
+        return serve()

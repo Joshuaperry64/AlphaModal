@@ -361,3 +361,15 @@ if __name__ == "__main__":
         raise Exception(
             f"To take advantage of GPU snapshots, deploy first with modal deploy {__file__}"
         ) from e
+
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_SGLang():
+    """Auto-generated wrapper to instantiate SGLang (app name not literal in file)."""
+    try:
+        Cls = modal.Cls.from_name(app.name, 'SGLang')
+    except Exception as e:
+        raise RuntimeError('Could not resolve class SGLang for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated SGLang'

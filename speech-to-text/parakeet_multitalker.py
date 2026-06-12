@@ -438,3 +438,32 @@ class WebServer:
             return HTMLResponse(content=html_content)
 
         return web_app
+
+
+# Auto-generated class local_entrypoint wrappers
+@app.local_entrypoint()
+def entrypoint_Transcriber():
+    """Auto-generated wrapper to instantiate Transcriber"""
+    try:
+        Cls = modal.Cls.from_name('parakeet-multitalker', 'Transcriber')
+    except Exception:
+        try:
+            Cls = modal.Cls.from_name(app.name, 'Transcriber')
+        except Exception as e:
+            raise RuntimeError('Could not resolve class Transcriber for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated Transcriber'
+
+
+@app.local_entrypoint()
+def entrypoint_WebServer():
+    """Auto-generated wrapper to instantiate WebServer"""
+    try:
+        Cls = modal.Cls.from_name('parakeet-multitalker', 'WebServer')
+    except Exception:
+        try:
+            Cls = modal.Cls.from_name(app.name, 'WebServer')
+        except Exception as e:
+            raise RuntimeError('Could not resolve class WebServer for local entrypoint: ' + str(e))
+    inst = Cls()
+    return 'instantiated WebServer'
