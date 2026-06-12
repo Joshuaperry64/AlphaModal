@@ -8,6 +8,17 @@ from tkinter import messagebox
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
+# Dark theme color palette
+DARK_BG = "#0b0f16"
+PANEL_BG = "#0f1724"
+ACCENT = "#5c6cff"
+TEXT = "#e6eef8"
+MUTED = "#9aa0b1"
+SELECT_BG = "#27314a"
+SELECT_FG = "#ffffff"
+TOOLTIP_BG = "#222831"
+TOOLTIP_FG = "#f8f8ff"
+
 ROOT = pathlib.Path(__file__).resolve().parent
 IGNORED_DIRS = {".git", "__pycache__", "venv", ".venv", "env", "envs"}
 
@@ -167,7 +178,16 @@ class Tooltip:
         self.tipwindow = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_geometry(f"+{x}+{y}")
-        label = tk.Label(tw, text=text, justify="left", background="#ffffe0", relief="solid", borderwidth=1, font=("Segoe UI", 9))
+        label = tk.Label(
+            tw,
+            text=text,
+            justify="left",
+            background=TOOLTIP_BG,
+            foreground=TOOLTIP_FG,
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9),
+        )
         label.pack(ipadx=6, ipady=4)
 
     def hide(self, event=None):
@@ -184,25 +204,43 @@ class LauncherApp(tk.Tk):
     def __init__(self, scripts):
         super().__init__()
         self.title("AlphaModal WSL Script Launcher")
-        self.geometry("980x640")
-        self.minsize(920, 560)
+        self.geometry("1100x720")
+        self.minsize(980, 600)
         self.scripts = scripts
         self.selected_script = None
-        self.configure(bg="#1e1e2f")
+        self.configure(bg=DARK_BG)
         self.style = ttk.Style(self)
         self.style.theme_use("clam")
-        self.style.configure("Treeview", background="#11111f", fieldbackground="#11111f", foreground="#f4f4ff", rowheight=26, borderwidth=0)
-        self.style.configure("Treeview.Heading", background="#2b2b45", foreground="#f0f0ff", font=("Segoe UI", 11, "bold"))
-        self.style.configure("TButton", background="#3b3b62", foreground="#f5f5ff", font=("Segoe UI", 10, "bold"), padding=8)
-        self.style.map("TButton", background=[('active', '#505080')])
-        self.style.configure("TLabel", background="#1e1e2f", foreground="#f8f8ff", font=("Segoe UI", 10))
-        self.style.configure("Header.TLabel", font=("Segoe UI", 16, "bold"))
+        self.style.configure(
+            "Treeview",
+            background=PANEL_BG,
+            fieldbackground=PANEL_BG,
+            foreground=TEXT,
+            rowheight=26,
+            borderwidth=0,
+        )
+        self.style.configure(
+            "Treeview.Heading",
+            background=SELECT_BG,
+            foreground=TEXT,
+            font=("Segoe UI", 11, "bold"),
+        )
+        self.style.configure(
+            "TButton",
+            background=ACCENT,
+            foreground=TEXT,
+            font=("Segoe UI", 10, "bold"),
+            padding=8,
+        )
+        self.style.map("TButton", background=[("active", "#4450b0")])
+        self.style.configure("TLabel", background=DARK_BG, foreground=TEXT, font=("Segoe UI", 10))
+        self.style.configure("Header.TLabel", font=("Segoe UI", 16, "bold"), foreground=TEXT)
 
         self.build_ui()
 
     def build_ui(self):
         notebook = ttk.Notebook(self)
-        notebook.grid(row=0, column=0, columnspan=3, rowspan=6, sticky="nsew", padx=20, pady=18)
+        notebook.grid(row=0, column=0, columnspan=3, rowspan=6, sticky="nsew", padx=12, pady=12)
 
         main_frame = ttk.Frame(notebook)
         guide_frame = ttk.Frame(notebook)
@@ -210,46 +248,58 @@ class LauncherApp(tk.Tk):
         notebook.add(guide_frame, text="Guide")
 
         header = ttk.Label(main_frame, text="AlphaModal Launcher", style="Header.TLabel")
-        header.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
+        header.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6), padx=(6,0))
 
         subtitle = ttk.Label(
             main_frame,
-            text="Select, inspect, and launch workspace Python scripts through WSL without virtual environments.",
+            text="Select, inspect, and launch workspace Python scripts through WSL or Modal.",
             wraplength=760,
             justify="left",
         )
-        subtitle.grid(row=1, column=0, columnspan=3, sticky="w")
+        subtitle.grid(row=1, column=0, columnspan=3, sticky="w", padx=(6,0))
 
+        # Search bar
+        search_frame = ttk.Frame(main_frame)
+        search_frame.grid(row=2, column=0, columnspan=3, sticky="ew", padx=(6,0), pady=(8,6))
+        search_frame.columnconfigure(1, weight=1)
+        ttk.Label(search_frame, text="Search:").grid(row=0, column=0, sticky="w")
+        self.search_var = tk.StringVar()
+        self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
+        self.search_entry.grid(row=0, column=1, sticky="ew", padx=(8,6))
+        self.search_entry.bind("<KeyRelease>", lambda e: self.populate_tree(filter_text=self.search_var.get()))
+        ttk.Button(search_frame, text="Clear", command=lambda: (self.search_var.set(""), self.populate_tree())).grid(row=0, column=2, sticky="e")
+
+        # Script tree
         self.tree = ttk.Treeview(main_frame, columns=("description",), show="tree headings", selectmode="browse", height=24)
         self.tree.heading("#0", text="Script")
         self.tree.heading("description", text="Description")
         self.tree.column("#0", width=420, anchor="w")
         self.tree.column("description", width=420, anchor="w")
-        self.tree.grid(row=2, column=0, rowspan=4, padx=(0, 10), pady=16, sticky="nsew")
+        self.tree.grid(row=3, column=0, rowspan=6, padx=(6, 6), pady=6, sticky="nsew")
 
         scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=self.tree.yview)
-        scrollbar.grid(row=2, column=1, rowspan=4, sticky="nsw", padx=(0, 10), pady=16)
+        scrollbar.grid(row=3, column=1, rowspan=6, sticky="nsw", padx=(0, 6), pady=6)
         self.tree.configure(yscroll=scrollbar.set)
 
+        # Right column (details + controls)
         right_frame = ttk.Frame(main_frame)
-        right_frame.grid(row=2, column=2, rowspan=4, sticky="nsew")
+        right_frame.grid(row=3, column=2, rowspan=6, sticky="nsew", padx=(6,6), pady=6)
         right_frame.grid_rowconfigure(2, weight=1)
         right_frame.grid_columnconfigure(0, weight=1)
 
         self.detail_title = ttk.Label(right_frame, text="Select a script to see details", style="Header.TLabel")
         self.detail_title.grid(row=0, column=0, sticky="w")
 
-        self.detail_path = ttk.Label(right_frame, text="Path: -", wraplength=380)
-        self.detail_path.grid(row=1, column=0, sticky="w", pady=(6, 10))
+        self.detail_path = ttk.Label(right_frame, text="Path: -", wraplength=520)
+        self.detail_path.grid(row=1, column=0, sticky="w", pady=(6, 6))
 
-        self.detail_text = ScrolledText(right_frame, wrap="word", height=14, background="#151524", foreground="#f8f8ff", font=("Consolas", 11), relief="flat")
+        self.detail_text = ScrolledText(right_frame, wrap="word", height=10, background=PANEL_BG, foreground=TEXT, font=("Consolas", 10), relief="flat")
         self.detail_text.grid(row=2, column=0, sticky="nsew")
         self.detail_text.config(state="disabled")
 
-        # Launch mode selector
-        launch_label = ttk.Label(right_frame, text="Launch mode:")
-        launch_label.grid(row=3, column=0, sticky="w", pady=(10, 4))
-
+        # Controls
+        ctrl_row = 3
+        ttk.Label(right_frame, text="Launch mode:").grid(row=ctrl_row+0, column=0, sticky="w", pady=(8,2))
         self.launch_mode_var = tk.StringVar(value="python3 (WSL)")
         self.launch_mode = ttk.Combobox(
             right_frame,
@@ -257,34 +307,43 @@ class LauncherApp(tk.Tk):
             state="readonly",
             textvariable=self.launch_mode_var,
         )
-        self.launch_mode.grid(row=4, column=0, sticky="ew")
-        self.launch_mode.bind("<<ComboboxSelected>>", lambda e: self.on_launch_mode_change())
+        self.launch_mode.grid(row=ctrl_row+1, column=0, sticky="ew")
+        self.launch_mode.bind("<<ComboboxSelected>>", lambda e: (self.on_launch_mode_change(), self.update_command_preview()))
 
-        # Entrypoint selector (populated for modal apps)
-        entry_label = ttk.Label(right_frame, text="Entrypoint (modal):")
-        entry_label.grid(row=5, column=0, sticky="w", pady=(8, 4))
-
+        ttk.Label(right_frame, text="Entrypoint (modal):").grid(row=ctrl_row+2, column=0, sticky="w", pady=(8,2))
         self.entrypoint_combo = ttk.Combobox(right_frame, values=[], state="disabled")
-        self.entrypoint_combo.grid(row=6, column=0, sticky="ew")
+        self.entrypoint_combo.grid(row=ctrl_row+3, column=0, sticky="ew")
+        self.entrypoint_combo.bind("<<ComboboxSelected>>", lambda e: self.update_command_preview())
 
-        arg_label = ttk.Label(right_frame, text="Extra WSL / modal args:")
-        arg_label.grid(row=7, column=0, sticky="w", pady=(14, 4))
-
+        ttk.Label(right_frame, text="Extra WSL / modal args:").grid(row=ctrl_row+4, column=0, sticky="w", pady=(8,2))
         self.args_entry = ttk.Entry(right_frame)
-        self.args_entry.grid(row=8, column=0, sticky="ew")
+        self.args_entry.grid(row=ctrl_row+5, column=0, sticky="ew")
+        self.args_entry.bind("<KeyRelease>", lambda e: self.update_command_preview())
 
-        button_frame = ttk.Frame(right_frame)
-        button_frame.grid(row=9, column=0, sticky="ew", pady=18)
-        button_frame.columnconfigure((0, 1), weight=1)
+        # Command preview
+        ttk.Label(right_frame, text="Command preview:").grid(row=ctrl_row+6, column=0, sticky="w", pady=(10,2))
+        self.preview_text = ScrolledText(right_frame, wrap="none", height=5, background="#071018", foreground=TEXT, font=("Consolas", 10), relief="flat")
+        self.preview_text.grid(row=ctrl_row+7, column=0, sticky="ew")
+        self.preview_text.config(state="disabled")
 
-        self.launch_button = ttk.Button(button_frame, text="Launch Selected Script", command=self.on_launch)
-        self.launch_button.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        # Action buttons
+        action_frame = ttk.Frame(right_frame)
+        action_frame.grid(row=ctrl_row+8, column=0, sticky="ew", pady=(10,4))
+        action_frame.columnconfigure((0,1,2), weight=1)
+        self.copy_button = ttk.Button(action_frame, text="Copy Command", command=self.copy_command)
+        self.copy_button.grid(row=0, column=0, sticky="ew", padx=(0,6))
+        self.open_button = ttk.Button(action_frame, text="Open in WSL", command=self.open_in_wsl)
+        self.open_button.grid(row=0, column=1, sticky="ew", padx=(0,6))
+        self.launch_button = ttk.Button(action_frame, text="Launch Selected Script", command=self.on_launch)
+        self.launch_button.grid(row=0, column=2, sticky="ew")
 
-        self.refresh_button = ttk.Button(button_frame, text="Refresh Scripts", command=self.populate_tree)
-        self.refresh_button.grid(row=0, column=1, sticky="ew")
-
-        help_label = ttk.Label(right_frame, text="Tip: Use the guide tab for WSL usage hints and launcher details.")
-        help_label.grid(row=10, column=0, sticky="w")
+        # Bottom refresh/help
+        bottom_frame = ttk.Frame(right_frame)
+        bottom_frame.grid(row=ctrl_row+9, column=0, sticky="ew", pady=(8,0))
+        bottom_frame.columnconfigure(0, weight=1)
+        self.refresh_button = ttk.Button(bottom_frame, text="Refresh Scripts", command=self.populate_tree)
+        self.refresh_button.grid(row=0, column=0, sticky="w")
+        ttk.Label(bottom_frame, text="Tip: hover scripts for quick info; use Search to filter.").grid(row=1, column=0, sticky="w", pady=(8,0))
 
         self.populate_tree()
         self.tree.bind("<<TreeviewSelect>>", self.on_select)
@@ -329,6 +388,10 @@ class LauncherApp(tk.Tk):
         self.tree.delete(*self.tree.get_children())
         categories = {}
         for script in self.scripts:
+            if hasattr(self, 'search_var') and self.search_var.get().strip():
+                q = self.search_var.get().lower()
+                if q not in script['title'].lower() and q not in str(script['rel']).lower() and q not in script['description'].lower():
+                    continue
             cat = script["category"]
             if cat not in categories:
                 categories[cat] = self.tree.insert("", "end", text=cat, open=True)
@@ -371,6 +434,7 @@ class LauncherApp(tk.Tk):
             self.entrypoint_combo.config(state="disabled")
         # update entrypoint availability based on launch mode
         self.on_launch_mode_change()
+        self.update_command_preview()
 
     def on_launch(self):
         if not self.selected_script:
@@ -397,6 +461,58 @@ class LauncherApp(tk.Tk):
             messagebox.showerror("WSL not found", "Could not find wsl.exe. Make sure WSL is installed and available in PATH.")
         except Exception as exc:
             messagebox.showerror("Launch error", f"Unable to launch script:\n{exc}")
+        finally:
+            self.update_command_preview()
+
+    def update_command_preview(self):
+        # Build and display command preview based on current selections
+        if not getattr(self, 'selected_script', None):
+            txt = "No script selected."
+        else:
+            mode_label = self.launch_mode_var.get() if hasattr(self, 'launch_mode_var') else 'python3 (WSL)'
+            mode_map = {
+                'python3 (WSL)': 'python3',
+                'modal run': 'modal_run',
+                'modal serve': 'modal_serve',
+                'modal deploy': 'modal_deploy',
+            }
+            selected_mode = mode_map.get(mode_label, 'python3')
+            entrypoint = None
+            if selected_mode == 'modal_run' and self.entrypoint_combo and self.entrypoint_combo.get():
+                entrypoint = self.entrypoint_combo.get()
+            cmd = create_command(self.selected_script['path'], self.args_entry.get(), launch_mode=selected_mode, entrypoint=entrypoint)
+            txt = cmd
+        self.preview_text.config(state='normal')
+        self.preview_text.delete('1.0', 'end')
+        self.preview_text.insert('1.0', txt)
+        self.preview_text.config(state='disabled')
+
+    def copy_command(self):
+        self.preview_text.config(state='normal')
+        cmd = self.preview_text.get('1.0', 'end').strip()
+        self.preview_text.config(state='disabled')
+        if not cmd:
+            return
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(cmd)
+            messagebox.showinfo('Copied', 'Command copied to clipboard')
+        except Exception as e:
+            messagebox.showerror('Error', f'Could not copy to clipboard: {e}')
+
+    def open_in_wsl(self):
+        # Open a wsl shell and print the command (does not execute automatically)
+        if not getattr(self, 'selected_script', None):
+            messagebox.showwarning('No script selected', 'Select a script first')
+            return
+        cmd = self.preview_text.get('1.0', 'end').strip()
+        if not cmd:
+            messagebox.showwarning('No command', 'No command to open in WSL')
+            return
+        try:
+            subprocess.Popen(['wsl.exe', 'bash', '-lc', f'echo "{cmd}"; bash'], creationflags=0)
+        except Exception as e:
+            messagebox.showerror('Error', f'Failed to open WSL: {e}')
 
     def on_launch_mode_change(self):
         # Enable entrypoint selection only for modal_run where entrypoints exist
