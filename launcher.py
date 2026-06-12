@@ -240,14 +240,35 @@ class LauncherApp(tk.Tk):
         self.detail_text.grid(row=2, column=0, sticky="nsew")
         self.detail_text.config(state="disabled")
 
-        arg_label = ttk.Label(right_frame, text="Extra WSL args:")
-        arg_label.grid(row=3, column=0, sticky="w", pady=(14, 4))
+        # Launch mode selector
+        launch_label = ttk.Label(right_frame, text="Launch mode:")
+        launch_label.grid(row=3, column=0, sticky="w", pady=(10, 4))
+
+        self.launch_mode_var = tk.StringVar(value="python3 (WSL)")
+        self.launch_mode = ttk.Combobox(
+            right_frame,
+            values=["python3 (WSL)", "modal run", "modal serve", "modal deploy"],
+            state="readonly",
+            textvariable=self.launch_mode_var,
+        )
+        self.launch_mode.grid(row=4, column=0, sticky="ew")
+        self.launch_mode.bind("<<ComboboxSelected>>", lambda e: self.on_launch_mode_change())
+
+        # Entrypoint selector (populated for modal apps)
+        entry_label = ttk.Label(right_frame, text="Entrypoint (modal):")
+        entry_label.grid(row=5, column=0, sticky="w", pady=(8, 4))
+
+        self.entrypoint_combo = ttk.Combobox(right_frame, values=[], state="disabled")
+        self.entrypoint_combo.grid(row=6, column=0, sticky="ew")
+
+        arg_label = ttk.Label(right_frame, text="Extra WSL / modal args:")
+        arg_label.grid(row=7, column=0, sticky="w", pady=(14, 4))
 
         self.args_entry = ttk.Entry(right_frame)
-        self.args_entry.grid(row=4, column=0, sticky="ew")
+        self.args_entry.grid(row=8, column=0, sticky="ew")
 
         button_frame = ttk.Frame(right_frame)
-        button_frame.grid(row=5, column=0, sticky="ew", pady=18)
+        button_frame.grid(row=9, column=0, sticky="ew", pady=18)
         button_frame.columnconfigure((0, 1), weight=1)
 
         self.launch_button = ttk.Button(button_frame, text="Launch Selected Script", command=self.on_launch)
@@ -257,15 +278,17 @@ class LauncherApp(tk.Tk):
         self.refresh_button.grid(row=0, column=1, sticky="ew")
 
         help_label = ttk.Label(right_frame, text="Tip: Use the guide tab for WSL usage hints and launcher details.")
-        help_label.grid(row=6, column=0, sticky="w")
+        help_label.grid(row=10, column=0, sticky="w")
 
         self.populate_tree()
         self.tree.bind("<<TreeviewSelect>>", self.on_select)
         self.tree.bind("<Motion>", self.on_tree_motion)
         self.tree.bind("<Leave>", self.on_tree_leave)
 
-        Tooltip(self.args_entry, "Enter optional command-line arguments to pass through WSL to the selected script.")
-        Tooltip(self.launch_button, "Launch the selected script in a new WSL bash process.")
+        Tooltip(self.launch_mode, "Choose how to run the script: local WSL python3, or Modal (run/serve/deploy).")
+        Tooltip(self.entrypoint_combo, "Select the modal entrypoint function to invoke (if available).")
+        Tooltip(self.args_entry, "Enter optional command-line arguments. For 'modal run' put args after -- e.g. -- --port 8000 or just enter named args; the launcher will append them appropriately.")
+        Tooltip(self.launch_button, "Launch the selected script using the chosen mode.")
         Tooltip(self.refresh_button, "Reload the list of available Python scripts from the workspace.")
 
         self.tree_tooltip = Tooltip(self.tree, lambda: "")
