@@ -9,15 +9,15 @@ from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
 # Dark theme color palette
-DARK_BG = "#0b0f16"
-PANEL_BG = "#0f1724"
-ACCENT = "#5c6cff"
-TEXT = "#e6eef8"
-MUTED = "#9aa0b1"
-SELECT_BG = "#27314a"
+DARK_BG = "#0f172a"
+PANEL_BG = "#1e293b"
+ACCENT = "#3b82f6"
+TEXT = "#f8fafc"
+MUTED = "#94a3b8"
+SELECT_BG = "#334155"
 SELECT_FG = "#ffffff"
-TOOLTIP_BG = "#222831"
-TOOLTIP_FG = "#f8f8ff"
+TOOLTIP_BG = "#0f172a"
+TOOLTIP_FG = "#f8fafc"
 
 ROOT = pathlib.Path(__file__).resolve().parent
 IGNORED_DIRS = {".git", "__pycache__", "venv", ".venv", "env", "envs"}
@@ -214,8 +214,8 @@ class LauncherApp(tk.Tk):
         try:
             self.option_add("*Background", DARK_BG)
             self.option_add("*Foreground", TEXT)
-            self.option_add("*Font", ("Segoe UI", 10))
-            self.option_add("*Button.Font", ("Segoe UI", 10, "bold"))
+            self.option_add("*Font", ("Segoe UI", 11))
+            self.option_add("*Button.Font", ("Segoe UI", 11, "bold"))
             # caret color for Entry widgets
             self.option_add("*Entry.insertBackground", TEXT)
         except Exception:
@@ -228,7 +228,7 @@ class LauncherApp(tk.Tk):
             background=PANEL_BG,
             fieldbackground=PANEL_BG,
             foreground=TEXT,
-            rowheight=26,
+            rowheight=32,
             borderwidth=0,
         )
         self.style.configure(
@@ -244,7 +244,7 @@ class LauncherApp(tk.Tk):
             font=("Segoe UI", 10, "bold"),
             padding=8,
         )
-        self.style.map("TButton", background=[("active", "#4450b0")])
+        self.style.map("TButton", background=[("active", "#2563eb")])
         # Additional ttk styling for a cohesive dark theme
         try:
             self.style.configure("TFrame", background=DARK_BG)
@@ -258,11 +258,11 @@ class LauncherApp(tk.Tk):
             self.style.configure("Horizontal.TScrollbar", background=PANEL_BG, troughcolor=SELECT_BG)
             # Accent button style to use explicitly where needed
             self.style.configure("Accent.TButton", background=ACCENT, foreground=TEXT, font=("Segoe UI", 10, "bold"), padding=8)
-            self.style.map("Accent.TButton", background=[("active", "#4450b0")])
+            self.style.map("Accent.TButton", background=[("active", "#2563eb")])
         except Exception:
             pass
         self.style.configure("TLabel", background=DARK_BG, foreground=TEXT, font=("Segoe UI", 10))
-        self.style.configure("Header.TLabel", font=("Segoe UI", 16, "bold"), foreground=TEXT)
+        self.style.configure("Header.TLabel", font=("Segoe UI", 18, "bold"), foreground=TEXT)
 
         self.build_ui()
 
@@ -300,7 +300,7 @@ class LauncherApp(tk.Tk):
             pass
         self.search_entry.grid(row=0, column=1, sticky="ew", padx=(8,6))
         self.search_entry.bind("<KeyRelease>", lambda e: self.populate_tree(filter_text=self.search_var.get()))
-        ttk.Button(search_frame, text="Clear", command=lambda: (self.search_var.set(""), self.populate_tree()), style="Accent.TButton").grid(row=0, column=2, sticky="e")
+        ttk.Button(search_frame, text="Clear", command=lambda: (self.search_var.set(""), self.populate_tree()), style="Accent.TButton", cursor="hand2").grid(row=0, column=2, sticky="e")
 
         # Script tree
         self.tree = ttk.Treeview(main_frame, columns=("description",), show="tree headings", selectmode="browse", height=24)
@@ -339,12 +339,13 @@ class LauncherApp(tk.Tk):
             values=["python3 (WSL)", "modal run", "modal serve", "modal deploy"],
             state="readonly",
             textvariable=self.launch_mode_var,
+            cursor="hand2",
         )
         self.launch_mode.grid(row=ctrl_row+1, column=0, sticky="ew")
         self.launch_mode.bind("<<ComboboxSelected>>", lambda e: (self.on_launch_mode_change(), self.update_command_preview()))
 
         ttk.Label(right_frame, text="Entrypoint (modal):").grid(row=ctrl_row+2, column=0, sticky="w", pady=(8,2))
-        self.entrypoint_combo = ttk.Combobox(right_frame, values=[], state="disabled")
+        self.entrypoint_combo = ttk.Combobox(right_frame, values=[], state="disabled", cursor="hand2")
         self.entrypoint_combo.grid(row=ctrl_row+3, column=0, sticky="ew")
         self.entrypoint_combo.bind("<<ComboboxSelected>>", lambda e: self.update_command_preview())
 
@@ -367,18 +368,18 @@ class LauncherApp(tk.Tk):
         action_frame = ttk.Frame(right_frame)
         action_frame.grid(row=ctrl_row+8, column=0, sticky="ew", pady=(10,4))
         action_frame.columnconfigure((0,1,2), weight=1)
-        self.copy_button = ttk.Button(action_frame, text="Copy Command", command=self.copy_command, style="Accent.TButton")
+        self.copy_button = ttk.Button(action_frame, text="Copy Command", command=self.copy_command, style="Accent.TButton", cursor="hand2")
         self.copy_button.grid(row=0, column=0, sticky="ew", padx=(0,6))
-        self.open_button = ttk.Button(action_frame, text="Open in WSL", command=self.open_in_wsl, style="Accent.TButton")
+        self.open_button = ttk.Button(action_frame, text="Open in WSL", command=self.open_in_wsl, style="Accent.TButton", cursor="hand2")
         self.open_button.grid(row=0, column=1, sticky="ew", padx=(0,6))
-        self.launch_button = ttk.Button(action_frame, text="Launch Selected Script", command=self.on_launch, style="Accent.TButton")
+        self.launch_button = ttk.Button(action_frame, text="Launch Selected Script", command=self.on_launch, style="Accent.TButton", cursor="hand2")
         self.launch_button.grid(row=0, column=2, sticky="ew")
 
         # Bottom refresh/help
         bottom_frame = ttk.Frame(right_frame)
         bottom_frame.grid(row=ctrl_row+9, column=0, sticky="ew", pady=(8,0))
         bottom_frame.columnconfigure(0, weight=1)
-        self.refresh_button = ttk.Button(bottom_frame, text="Refresh Scripts", command=self.populate_tree, style="Accent.TButton")
+        self.refresh_button = ttk.Button(bottom_frame, text="Refresh Scripts", command=self.populate_tree, style="Accent.TButton", cursor="hand2")
         self.refresh_button.grid(row=0, column=0, sticky="w")
         ttk.Label(bottom_frame, text="Tip: hover scripts for quick info; use Search to filter.").grid(row=1, column=0, sticky="w", pady=(8,0))
 
@@ -396,9 +397,9 @@ class LauncherApp(tk.Tk):
         self.tree_tooltip = Tooltip(self.tree, lambda: "")
         self.tree_tooltip_item = None
 
-        main_frame.grid_rowconfigure(2, weight=1)
+        main_frame.grid_rowconfigure(3, weight=1)
         main_frame.grid_columnconfigure(0, weight=1)
-        main_frame.grid_columnconfigure(2, weight=0)
+        main_frame.grid_columnconfigure(2, weight=1)
 
         guide_text = ScrolledText(guide_frame, wrap="word", background=PANEL_BG, foreground=TOOLTIP_FG, font=("Segoe UI", 10), relief="flat")
         guide_text.grid(row=0, column=0, sticky="nsew", padx=12, pady=12)
