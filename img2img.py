@@ -226,6 +226,41 @@ class Model:
             threading.Thread(target=kill).start()
             return {"status": "shutting down"}
 
+        @web_app.post("/v1/images/edits")
+        async def openai_compatible_edits(request: fastapi.Request):
+            import base64
+            from io import BytesIO
+            
+            # The OpenAI spec for edits can be sent as form data or JSON depending on the client.
+            # Open WebUI typically sends multipart/form-data for image edits.
+            form = await request.form()
+            
+            prompt = form.get("prompt", "Apply standard edits")
+            n = int(form.get("n", 1))
+            
+            # Extract the uploaded image file
+            image_file = form.get("image")
+            if not image_file:
+                return fastapi.responses.JSONResponse(status_code=400, content={"error": "Image is required for editing."})
+            
+            image_bytes = await image_file.read()
+            
+            # Run your existing Modal inference function for Qwen Image Edit
+            output_bytes_list = self.inference.local(
+                image_bytes=image_bytes,
+                prompt=prompt,
+                negative_prompt="worst quality, low quality, censorship, text, watermark, signature, blur, bad anatomy, ugly, deformed",
+                true_cfg_scale=4.0,
+                num_inference_steps=20,
+                batch_size=n,
+                lora="none",
+                seed=-1,
+            )
+            
+            # Format the output exactly how Open WebUI expects it (OpenAI spec)
+            b64_list = [{"b64_json": base64.b64encode(img).decode('utf-8')} for img in output_bytes_list]
+            return {"data": b64_list}
+
         @web_app.post("/stream")
         def web_endpoint_stream(
             image: UploadFile = File(...),

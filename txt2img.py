@@ -40,7 +40,7 @@ image = (
 )
 
 with image.imports():
-    from diffusers import StableDiffusionXLPipeline  # FIXED: Explicitly use SDXL pipeline
+    from diffusers import StableDiffusionXLPipeline
     import diffusers
     import torch
     from safetensors.torch import load_file, save_file
@@ -76,7 +76,6 @@ class Inference:
         if not model_path.exists():
             raise FileNotFoundError(f"Model not found at: {model_path}. Did you upload it?")
 
-        # FIXED: Use StableDiffusionXLPipeline instead of AutoPipeline
         self.pipe = StableDiffusionXLPipeline.from_single_file(
             str(model_path),
             torch_dtype=torch.bfloat16,
@@ -220,13 +219,37 @@ class Inference:
             threading.Thread(target=kill).start()
             return {"status": "shutting down"}
 
+        @web_app.post("/v1/images/generations")
+        async def openai_compatible_generations(request: fastapi.Request):
+            import base64
+            
+            body = await request.json()
+            prompt = body.get("prompt", "A cinematic photo")
+            n = int(body.get("n", 1))
+            
+            image_bytes_list = self.run.local(
+                prompt=prompt,
+                JuggernautXL=1,
+                CyberRealisticXL=0,
+                negative_prompt="illustration, 3d, render, anime, cartoon, painting, sketch, bad anatomy, deformed, disfigured, mutated, poorly drawn face, poorly drawn hands, mutated hands, missing limbs, extra limbs, extra fingers, distorted body, bad proportions, fused flesh, asymmetrical, plastic, airbrushed, overly smooth skin, oversaturated, blurry, worst quality, low quality, watermark, text, signature",
+                batch_size=n,
+                guidance_scale="7.0",
+                num_inference_steps=25,
+                scheduler="Euler",
+                seed=-1,
+                lora="none"
+            )
+            
+            b64_list = [{"b64_json": base64.b64encode(img).decode('utf-8')} for img in image_bytes_list]
+            return {"data": b64_list}
+
         @web_app.get("/stream")
         @web_app.get("/")
         def generate_endpoint(
             prompt: str, 
             JuggernautXL: int = 1,
             CyberRealisticXL: int = 0,
-            negative_prompt: str = "low quality, blurry, distorted", 
+            negative_prompt: str = "illustration, 3d, render, anime, cartoon, painting, sketch, bad anatomy, deformed, disfigured, mutated, poorly drawn face, poorly drawn hands, mutated hands, missing limbs, extra limbs, extra fingers, distorted body, bad proportions, fused flesh, asymmetrical, plastic, airbrushed, overly smooth skin, oversaturated, blurry, worst quality, low quality, watermark, text, signature", 
             guidance_scale: str = "7.0", 
             num_inference_steps: int = 25, 
             scheduler: str = "Euler", 
@@ -236,7 +259,7 @@ class Inference:
         ):
             from starlette.responses import StreamingResponse
             import base64
- 
+
             def event_stream():
                 image_bytes_list = self.run.local(
                     prompt=prompt,
