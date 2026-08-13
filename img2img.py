@@ -13,8 +13,6 @@ from pathlib import Path
 
 import modal
 
-from fastapi import Response, UploadFile, File
-
 app = modal.App("img2img-qwen-edit-plus")
 
 image = (

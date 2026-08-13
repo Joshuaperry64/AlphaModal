@@ -81,6 +81,7 @@ class Inference:
             torch_dtype=torch.bfloat16,
             use_safetensors=True,
         ).to("cuda")
+            
         self.current_model = model_filename
 
     def _merge_and_load(self, model1_name: str, model2_name: str, merged_name: str):
@@ -117,26 +118,41 @@ class Inference:
     def run(
         self, 
         prompt: str, 
-        JuggernautXL: int = 1,          
+        JuggernautXL: int = 0,          
         CyberRealisticXL: int = 0,      
+        EpicRealismXL: int = 0,
+        UnholyDesireXL: int = 0,
+        Lustify: int = 0,
+        AutismPony: int = 0,
+        model_name: str = "jugg",
         negative_prompt: str = "low quality, blurry, distorted", 
         batch_size: int = 4, 
         guidance_scale: str = "7.0", 
         num_inference_steps: int = 25, 
         scheduler: str = "Euler", 
+        sampler: str = "",
+        amateur: int = 0,
         seed: int = -1,
         lora: str = "none"
     ) -> list[bytes]:
         
-        model_file = "unholyDesireMixSinister_v80.safetensors"
-        
-        if JuggernautXL == 1 and CyberRealisticXL == 0:
+        if EpicRealismXL == 1 or model_name.lower().startswith("epic"):
+            model_file = "epicrealismXL_pureFix.safetensors"
+        elif CyberRealisticXL == 1 or model_name.lower().startswith("cyber"):
+            model_file = "cyberrealistic_final.safetensors"
+        elif UnholyDesireXL == 1 or model_name.lower().startswith("unholy"):
+            model_file = "unholyDesireMixFoolS_v60.safetensors"
+        elif Lustify == 1 or model_name.lower().startswith("lust"):
+            model_file = "lustifyNSFWCheckpoint_zenithV9.safetensors"
+        elif AutismPony == 1 or model_name.lower().startswith("autism") or model_name.lower().startswith("pony"):
+            model_file = "autismmixSDXL_autismmixPony.safetensors"
+        else:
             model_file = "juggernautXL_ragnarok.safetensors"
-        elif CyberRealisticXL == 1 and JuggernautXL == 0:
-            model_file = "cyberrealisticXL_desireV30.safetensors"
             
         self._load_model(model_file)
 
+        if not guidance_scale:
+            guidance_scale = "7.0"
         g_scale_float = float(guidance_scale)
         batch_size = min(batch_size, 10)
 
@@ -145,12 +161,46 @@ class Inference:
         print(f"Seeding RNG with: {seed}")
         torch.manual_seed(seed)
 
-        if scheduler.lower() == "heun":
+        # Combine sampler and scheduler strings to parse them comprehensively
+        chosen_sampler = f"{sampler} {scheduler}".lower()
+
+        if "euler a" in chosen_sampler:
+            self.pipe.scheduler = diffusers.EulerAncestralDiscreteScheduler.from_config(self.pipe.scheduler.config)
+        # Note: diffusers has a known bug with solver_order=3 and sde-dpmsolver++ (UnboundLocalError on x_t).
+        # We catch 3M requests and safely route them through the stable 2nd-order SDE mathematics instead.
+        elif "3m" in chosen_sampler and "sde" in chosen_sampler and "karras" in chosen_sampler:
+            self.pipe.scheduler = diffusers.DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config, algorithm_type="sde-dpmsolver++", use_karras_sigmas=True)
+        elif "3m" in chosen_sampler and "sde" in chosen_sampler:
+            self.pipe.scheduler = diffusers.DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config, algorithm_type="sde-dpmsolver++")
+        elif "2m" in chosen_sampler and "sde" in chosen_sampler and "karras" in chosen_sampler:
+            self.pipe.scheduler = diffusers.DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config, algorithm_type="sde-dpmsolver++", use_karras_sigmas=True)
+        elif "dpm++ 2m karras" in chosen_sampler or "dpm++_2m_karras" in chosen_sampler or ("2m" in chosen_sampler and "karras" in chosen_sampler):
+            self.pipe.scheduler = diffusers.DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config, use_karras_sigmas=True)
+        elif "dpm++ sde karras" in chosen_sampler or "dpm++_sde_karras" in chosen_sampler or ("sde" in chosen_sampler and "karras" in chosen_sampler):
+            self.pipe.scheduler = diffusers.DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config, algorithm_type="sde-dpmsolver++", use_karras_sigmas=True)
+        elif "dpm++ 2m" in chosen_sampler or "dpm++_2m" in chosen_sampler:
+            self.pipe.scheduler = diffusers.DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config)
+        elif "dpm++ sde" in chosen_sampler or "dpm++_sde" in chosen_sampler:
+            self.pipe.scheduler = diffusers.DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config, algorithm_type="sde-dpmsolver++")
+        elif "ddim" in chosen_sampler:
+            self.pipe.scheduler = diffusers.DDIMScheduler.from_config(self.pipe.scheduler.config)
+        elif "lms" in chosen_sampler:
+            self.pipe.scheduler = diffusers.LMSDiscreteScheduler.from_config(self.pipe.scheduler.config)
+        elif "heun" in chosen_sampler:
             self.pipe.scheduler = diffusers.HeunDiscreteScheduler.from_config(self.pipe.scheduler.config)
-        elif scheduler.lower() == "dpm":
+        elif "unipc" in chosen_sampler:
+            self.pipe.scheduler = diffusers.UniPCMultistepScheduler.from_config(self.pipe.scheduler.config)
+        elif "dpm" in chosen_sampler:
             self.pipe.scheduler = diffusers.DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config)
         else:
             self.pipe.scheduler = diffusers.EulerDiscreteScheduler.from_config(self.pipe.scheduler.config)
+
+        # Handle Amateur UI toggle
+        if amateur == 1:
+            if lora and lora.lower() != "none":
+                lora += ",New_Amateurs_XL"
+            else:
+                lora = "New_Amateurs_XL"
 
         # Load LoRAs if specified
         if lora and lora.lower() != "none":
@@ -219,6 +269,20 @@ class Inference:
             threading.Thread(target=kill).start()
             return {"status": "shutting down"}
 
+        @web_app.get("/v1/models")
+        def get_models():
+            return {
+                "object": "list",
+                "data": [
+                    {"id": "jugg", "object": "model", "owned_by": "user"},
+                    {"id": "cyber", "object": "model", "owned_by": "user"},
+                    {"id": "epic", "object": "model", "owned_by": "user"},
+                    {"id": "unholy", "object": "model", "owned_by": "user"},
+                    {"id": "lust", "object": "model", "owned_by": "user"},
+                    {"id": "autism", "object": "model", "owned_by": "user"},
+                ]
+            }
+
         @web_app.post("/v1/images/generations")
         async def openai_compatible_generations(request: fastapi.Request):
             import base64
@@ -226,16 +290,27 @@ class Inference:
             body = await request.json()
             prompt = body.get("prompt", "A cinematic photo")
             n = int(body.get("n", 1))
+            model_name = body.get("model", "jugg")
+            sampler_val = body.get("sampler", "")
+            scheduler_val = body.get("scheduler", "Euler")
+            
+            # Default massive negative prompt
+            default_neg = "illustration, 3d, render, anime, cartoon, painting, sketch, bad anatomy, deformed, disfigured, mutated, poorly drawn face, poorly drawn hands, mutated hands, missing limbs, extra limbs, extra fingers, distorted body, bad proportions, fused flesh, asymmetrical, plastic, airbrushed, overly smooth skin, oversaturated, blurry, worst quality, low quality, watermark, text, signature"
+            neg_prompt = body.get("negative_prompt", default_neg)
+            # If they pass an empty string, we should respect it or use default? Usually, fallback if empty.
+            if not neg_prompt:
+                neg_prompt = default_neg
             
             image_bytes_list = self.run.local(
                 prompt=prompt,
-                JuggernautXL=1,
-                CyberRealisticXL=0,
-                negative_prompt="illustration, 3d, render, anime, cartoon, painting, sketch, bad anatomy, deformed, disfigured, mutated, poorly drawn face, poorly drawn hands, mutated hands, missing limbs, extra limbs, extra fingers, distorted body, bad proportions, fused flesh, asymmetrical, plastic, airbrushed, overly smooth skin, oversaturated, blurry, worst quality, low quality, watermark, text, signature",
+                model_name=model_name,
+                negative_prompt=neg_prompt,
                 batch_size=n,
                 guidance_scale="7.0",
                 num_inference_steps=25,
-                scheduler="Euler",
+                scheduler=scheduler_val,
+                sampler=sampler_val,
+                amateur=0,
                 seed=-1,
                 lora="none"
             )
@@ -247,12 +322,19 @@ class Inference:
         @web_app.get("/")
         def generate_endpoint(
             prompt: str, 
-            JuggernautXL: int = 1,
+            model_name: str = "jugg",
+            JuggernautXL: int = 0,
             CyberRealisticXL: int = 0,
+            EpicRealismXL: int = 0,
+            UnholyDesireXL: int = 0,
+            Lustify: int = 0,
+            AutismPony: int = 0,
             negative_prompt: str = "illustration, 3d, render, anime, cartoon, painting, sketch, bad anatomy, deformed, disfigured, mutated, poorly drawn face, poorly drawn hands, mutated hands, missing limbs, extra limbs, extra fingers, distorted body, bad proportions, fused flesh, asymmetrical, plastic, airbrushed, overly smooth skin, oversaturated, blurry, worst quality, low quality, watermark, text, signature", 
             guidance_scale: str = "7.0", 
             num_inference_steps: int = 25, 
             scheduler: str = "Euler", 
+            sampler: str = "",
+            amateur: int = 0,
             seed: int = -1,
             batch_size: int = 1,
             lora: str = "none"
@@ -263,13 +345,20 @@ class Inference:
             def event_stream():
                 image_bytes_list = self.run.local(
                     prompt=prompt,
+                    model_name=model_name,
                     JuggernautXL=JuggernautXL,
                     CyberRealisticXL=CyberRealisticXL,
+                    EpicRealismXL=EpicRealismXL,
+                    UnholyDesireXL=UnholyDesireXL,
+                    Lustify=Lustify,
+                    AutismPony=AutismPony,
                     negative_prompt=negative_prompt,
                     batch_size=max(1, int(batch_size)),
                     guidance_scale=guidance_scale,
                     num_inference_steps=num_inference_steps,
                     scheduler=scheduler,
+                    sampler=sampler,
+                    amateur=amateur,
                     seed=seed,
                     lora=lora,
                 )
@@ -292,6 +381,8 @@ def entrypoint(
     guidance_scale: str = "7.0",
     num_inference_steps: int = 25,
     scheduler: str = "Euler",
+    sampler: str = "",
+    amateur: int = 0,
     seed: int = -1,
     lora: str = "none",
 ):
@@ -311,6 +402,8 @@ def entrypoint(
             guidance_scale=guidance_scale,
             num_inference_steps=num_inference_steps,
             scheduler=scheduler,
+            sampler=sampler,
+            amateur=amateur,
             seed=seed,
             lora=lora,
         )
