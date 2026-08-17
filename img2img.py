@@ -120,6 +120,7 @@ class Model:
             return callback_kwargs
 
         def generate_task():
+            all_images_b64 = []
             try:
                 if lora and lora != "none":
                     loras_to_load = [l.strip() for l in lora.split(",") if l.strip() and l.strip() != "none"]
@@ -135,27 +136,40 @@ class Model:
                     if loaded_adapters:
                         self.pipe.set_adapters(loaded_adapters)
 
-                images = self.pipe(
-                    image=pil_images,
-                    prompt=prompt,
-                    negative_prompt=negative_prompt,
-                    num_images_per_prompt=batch_size,
-                    num_inference_steps=num_inference_steps,
-                    true_cfg_scale=true_cfg_scale,
-                    generator=generator,
-                    callback_on_step_end=callback
-                ).images
+                images_completed = 0
+                while images_completed < batch_size:
+                    current_batch_size = min(batch_size - images_completed, 10)
+
+                    def chunk_callback(pipe, step_index, timestep, callback_kwargs):
+                        q.put({"step": step_index, "max_steps": num_inference_steps, "images_completed": images_completed, "total_images": batch_size})
+                        return callback_kwargs
+
+                    chunk_images = self.pipe(
+                        image=pil_images,
+                        prompt=prompt,
+                        negative_prompt=negative_prompt,
+                        num_images_per_prompt=current_batch_size,
+                        num_inference_steps=num_inference_steps,
+                        true_cfg_scale=true_cfg_scale,
+                        generator=generator,
+                        callback_on_step_end=chunk_callback
+                    ).images
+
+                    chunk_b64 = []
+                    for image in chunk_images:
+                        with BytesIO() as buf:
+                            image.save(buf, format="PNG")
+                            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                            chunk_b64.append(b64)
+                            all_images_b64.append(b64)
+
+                    images_completed += current_batch_size
+                    q.put({"image_b64_partial": chunk_b64, "images_completed": images_completed, "total_images": batch_size})
 
                 if lora and lora != "none":
                     self.pipe.unload_lora_weights()
 
-                image_output = []
-                for img in images:
-                    with BytesIO() as buf:
-                        img.save(buf, format="PNG")
-                        image_output.append(base64.b64encode(buf.getvalue()).decode("utf-8"))
-                
-                q.put({"image_b64": image_output})
+                q.put({"image_b64": all_images_b64})
             except Exception as e:
                 if lora and lora != "none":
                     try: self.pipe.unload_lora_weights()

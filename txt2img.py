@@ -136,16 +136,20 @@ class Inference:
         lora: str = "none"
     ) -> list[bytes]:
         
-        if EpicRealismXL == 1 or model_name.lower().startswith("epic"):
+        if model_name.endswith(".safetensors"):
+            model_file = model_name
+        elif EpicRealismXL == 1 or model_name.lower().startswith("epic"):
             model_file = "epicrealismXL_pureFix.safetensors"
         elif CyberRealisticXL == 1 or model_name.lower().startswith("cyber"):
-            model_file = "cyberrealistic_final.safetensors"
+            model_file = "cyberrealisticXL_desireV30.safetensors"
         elif UnholyDesireXL == 1 or model_name.lower().startswith("unholy"):
-            model_file = "unholyDesireMixFoolS_v60.safetensors"
+            model_file = "unholyDesireMixSinister_v80.safetensors"
         elif Lustify == 1 or model_name.lower().startswith("lust"):
             model_file = "lustifyNSFWCheckpoint_zenithV9.safetensors"
         elif AutismPony == 1 or model_name.lower().startswith("autism") or model_name.lower().startswith("pony"):
             model_file = "autismmixSDXL_autismmixPony.safetensors"
+        elif model_name.lower().startswith("0x7"):
+            model_file = "0x7RealisticFreedom_omegaSDXL.safetensors"
         else:
             model_file = "juggernautXL_ragnarok.safetensors"
             
@@ -154,7 +158,7 @@ class Inference:
         if not guidance_scale:
             guidance_scale = "7.0"
         g_scale_float = float(guidance_scale)
-        batch_size = min(batch_size, 10)
+        batch_size = max(1, batch_size)
 
         if seed < 0:
             seed = random.randint(0, 2**32 - 1)
@@ -217,26 +221,66 @@ class Inference:
             if loaded_adapters:
                 self.pipe.set_adapters(loaded_adapters)
 
-        try:
-            images = self.pipe(
-                prompt=prompt,
-                negative_prompt=negative_prompt if negative_prompt else None,
-                num_images_per_prompt=batch_size,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=g_scale_float,
-            ).images
-        finally:
-            if lora and lora.lower() != "none":
-                try: self.pipe.unload_lora_weights()
-                except: pass
+        import queue
+        import threading
+        import base64
 
-        image_output = []
-        for image in images:
-            with io.BytesIO() as buf:
-                image.save(buf, format="PNG")
-                image_output.append(buf.getvalue())
-        torch.cuda.empty_cache()
-        return image_output
+        q = queue.Queue()
+
+        def callback(pipe, step_index, timestep, callback_kwargs):
+            q.put({"step": step_index, "max_steps": num_inference_steps})
+            return callback_kwargs
+
+        def generate_task():
+            all_images_b64 = []
+            try:
+                images_completed = 0
+                while images_completed < batch_size:
+                    current_batch_size = min(batch_size - images_completed, 10)
+
+                    def chunk_callback(pipe, step_index, timestep, callback_kwargs):
+                        q.put({"step": step_index, "max_steps": num_inference_steps, "images_completed": images_completed, "total_images": batch_size})
+                        return callback_kwargs
+
+                    chunk_images = self.pipe(
+                        prompt=prompt,
+                        negative_prompt=negative_prompt if negative_prompt else None,
+                        num_images_per_prompt=current_batch_size,
+                        num_inference_steps=num_inference_steps,
+                        guidance_scale=g_scale_float,
+                        callback_on_step_end=chunk_callback
+                    ).images
+                    
+                    chunk_b64 = []
+                    for image in chunk_images:
+                        with io.BytesIO() as buf:
+                            image.save(buf, format="PNG")
+                            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                            chunk_b64.append(b64)
+                            all_images_b64.append(b64)
+                    
+                    images_completed += current_batch_size
+                    q.put({"image_b64_partial": chunk_b64, "images_completed": images_completed, "total_images": batch_size})
+
+                torch.cuda.empty_cache()
+                if lora and lora.lower() != "none":
+                    try: self.pipe.unload_lora_weights()
+                    except: pass
+                
+                q.put({"image_b64": all_images_b64})
+            except Exception as e:
+                if lora and lora.lower() != "none":
+                    try: self.pipe.unload_lora_weights()
+                    except: pass
+                q.put({"error": str(e)})
+
+        threading.Thread(target=generate_task).start()
+
+        while True:
+            msg = q.get()
+            yield msg
+            if "image_b64" in msg or "error" in msg:
+                break
 
     @modal.asgi_app()
     def web(self):
@@ -301,7 +345,7 @@ class Inference:
             if not neg_prompt:
                 neg_prompt = default_neg
             
-            image_bytes_list = self.run.local(
+            msgs = list(self.run.local(
                 prompt=prompt,
                 model_name=model_name,
                 negative_prompt=neg_prompt,
@@ -313,9 +357,13 @@ class Inference:
                 amateur=0,
                 seed=-1,
                 lora="none"
-            )
+            ))
             
-            b64_list = [{"b64_json": base64.b64encode(img).decode('utf-8')} for img in image_bytes_list]
+            final_msg = msgs[-1]
+            if "error" in final_msg:
+                return {"error": final_msg["error"]}
+            
+            b64_list = [{"b64_json": b64} for b64 in final_msg["image_b64"]]
             return {"data": b64_list}
 
         @web_app.get("/stream")
@@ -343,7 +391,7 @@ class Inference:
             import base64
 
             def event_stream():
-                image_bytes_list = self.run.local(
+                for msg in self.run.local(
                     prompt=prompt,
                     model_name=model_name,
                     JuggernautXL=JuggernautXL,
@@ -361,10 +409,9 @@ class Inference:
                     amateur=amateur,
                     seed=seed,
                     lora=lora,
-                )
-                b64_list = [base64.b64encode(img).decode('utf-8') for img in image_bytes_list]
-                import json
-                yield f"data: {json.dumps({'image_b64': b64_list})}\n\n"
+                ):
+                    import json
+                    yield f"data: {json.dumps(msg)}\n\n"
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
         return web_app
@@ -393,7 +440,7 @@ def entrypoint(
 
     for sample_idx in range(samples):
         start = time.time()
-        images = inference_service.run.remote(
+        images_gen = inference_service.run.remote(
             prompt=prompt,
             JuggernautXL=JuggernautXL,
             CyberRealisticXL=CyberRealisticXL,
@@ -407,6 +454,15 @@ def entrypoint(
             seed=seed,
             lora=lora,
         )
+        msgs = list(images_gen)
+        final_msg = msgs[-1]
+        if "error" in final_msg:
+            print(f"Error: {final_msg['error']}")
+            continue
+
+        import base64
+        images = [base64.b64decode(b64) for b64 in final_msg["image_b64"]]
+
         duration = time.time() - start
         print(f"Run {sample_idx + 1} took {duration:.3f}s")
         for batch_idx, image_bytes in enumerate(images):
